@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>POS — Products</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root{--bg:#0f172a;--panel:#111827;--muted:#94a3b8;--brand:#3b82f6;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--stroke:#1f2937}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#0b1222,#0f172a)}
+    .wrap{max-width:1200px;margin:24px auto;padding:0 16px}
+    .topbar{display:flex;align-items:center;justify-content:space-between}
+    .title{color:#e5e7eb;margin:0;font-size:24px;font-weight:700;letter-spacing:.2px}
+    .actions{display:flex;gap:8px}
+    .btn{padding:10px 14px;border:1px solid #243041;background:#172036;color:#e5e7eb;border-radius:10px;cursor:pointer;font-weight:600}
+    .btn.primary{background:linear-gradient(180deg,#2563eb,#1d4ed8);border-color:#1e40af}
+    .btn.warn{background:#f59e0b;color:#111}
+    .btn.danger{background:#ef4444;color:#fff}
+    .btn.success{background:#10b981;color:#111}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
+    .grid{display:grid;gap:16px;margin-top:16px}
+    .grid.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{background:#0b1220;border:1px solid #1e293b;border-radius:14px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+    .kpi{color:#e5e7eb;font-weight:700;font-size:18px;cursor:pointer}
+    .kpi-sub{color:#94a3b8;margin-top:4px}
+    .form{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    label{color:#cbd5e1;font-size:12px;margin-bottom:6px;display:block}
+    input,select{width:100%;padding:10px 12px;border:1px solid #223049;border-radius:10px;background:#0e1626;color:#e5e7eb;outline:none}
+    .badge{padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700;display:inline-block}
+    .badge.ok{background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.24)}
+    .badge.err{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.24)}
+    table{width:100%;border-collapse:collapse;border:1px solid #1f2937}
+    thead th{position:sticky;top:0;background:#0f1627;color:#93a4c1;border-bottom:1px solid #1f2937;padding:10px;font-weight:700}
+    tbody td{border-top:1px solid #1f2937;padding:10px;color:#d1d5db;text-align:center}
+    tr:hover{background:#0f1a2f}
+    .toolbar{display:flex;gap:10px;align-items:center}
+    #search{min-width:420px}
+    /* toast */
+    #toast{position:fixed;top:18px;right:18px;z-index:9999}
+    .toast{background:#111827;border:1px solid #223049;color:#e5e7eb;padding:10px 14px;border-radius:10px;margin-top:8px;box-shadow:0 8px 20px rgba(0,0,0,.4);animation:fade .25s}
+    @keyframes fade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+    /* confirm modal */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9998}
+    .dialog{background:#0b1324;border:1px solid #223049;border-radius:14px;padding:18px;width:360px;color:#e5e7eb;text-align:center}
+    .row{display:flex;gap:10px;justify-content:center;margin-top:12px}
+
+    /* popup for low stock */
+    #lowStockModal {position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:10000;}
+    #lowStockModal .content {background:#0b1220;padding:20px;border-radius:14px;width:600px;max-height:80vh;overflow:auto;color:#e5e7eb;}
+    #lowStockModal h2 {margin-top:0;}
+    #lowStockModal table {width:100%;border-collapse:collapse;margin-top:10px;}
+    #lowStockModal th,#lowStockModal td {border:1px solid #223049;padding:8px;text-align:center;}
+    #lowStockModal th {background:#1e293b;}
+    #lowStockModal .close {float:right;cursor:pointer;color:#ef4444;font-weight:bold;}
+    #outflowSection {
+  color: #e5e7eb;   /* light text */
+}
+#outflowSection table th, 
+#outflowSection table td {
+  color: #e5e7eb;   /* ensure table text visible */
+}
+#searchResults li {
+  color: #fff;        /* White text */
+  padding: 6px 10px;
+  cursor: pointer;
+}
+#searchResults li:hover {
+  background: #333;   /* Highlight on hover */
+}
+
+#pagination {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 14px;
+  color: #ddd;
+}
+
+.pg-btn {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  padding: 5px 12px;
+  margin: 0 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.pg-btn:hover {
+  background: #334155;
+  color: #fff;
+}
+
+.pg-info {
+  margin: 0 10px;
+  font-weight: bold;
+  color: #cbd5e1;
+}
+
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <h1 class="title"><i class="fa-solid fa-capsules"></i> SOE HTET PHARMACY POS — Product Management</h1>
+      <div class="actions">
+        <button class="btn" onclick="location.href='/cashier'"><i class="fa-solid fa-cash-register"></i> Cashier</button>
+        <button class="btn" onclick="location.href='/sales'"><i class="fa-solid fa-chart-line"></i> Sales</button>
+        <button class="btn" onclick="openRestock()">
+  <i class="fa-solid fa-box"></i> Restock
+</button>
+
+</button>
+
+        <button class="btn btn-outflow" onclick="openOutflow()">💸 Outflow</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid cols-4">
+      <div class="card"><div class="kpi" id="k_products">0</div><div class="kpi-sub">Total Products</div></div>
+      <div class="card"><div class="kpi" id="k_value">Ks 0</div><div class="kpi-sub">Inventory Value</div></div>
+      <div class="card" onclick="showLowStock()"><div class="kpi" id="k_low">0</div><div class="kpi-sub">Low Stock (&lt; 10)</div></div>
+      <div class="card"><div class="kpi" id="k_profit">0%</div><div class="kpi-sub">Avg Margin</div></div>
+    </div>
+
+    <!-- Product Form -->
+    <div class="card">
+      <h3 style="color:#e5e7eb;margin:0 0 12px">Add / Edit Product</h3>
+      <div class="form">
+        <div><label>Barcode</label><input id="barcode"></div>
+        <div><label>Name</label><input id="name"></div>
+        <div>
+          <label>Category</label>
+          <select id="category" onchange="onCatChange(this)">
+            <option value="">Select Category</option>
+            <option value="__new__">➕ Add New Category</option>
+          </select>
+          <input id="newCat" placeholder="New category…" style="display:none;margin-top:8px">
+        </div>
+        <div><label>Quantity</label><input id="quantity" type="number" min="0" value="0"></div>
+        <div><label>Cost Price (Ks)</label><input id="cost" type="number" min="0" step="0.01" value="0"></div>
+        <div><label>Selling Price (Ks)</label><input id="price" type="number" min="0" step="0.01" value="0"></div>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn primary" onclick="addProduct()"><i class="fa fa-plus"></i> Add</button>
+        <button class="btn" onclick="modifyProduct()"><i class="fa fa-pen"></i> Modify</button>
+        <button class="btn danger" onclick="deleteProduct()"><i class="fa fa-trash"></i> Delete</button>
+        <button class="btn" onclick="clearForm()"><i class="fa fa-eraser"></i> Clear</button>
+        <button class="btn success" onclick="printProducts()"><i class="fa fa-print"></i> Print</button>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="card">
+      <div class="toolbar">
+        <input id="search" placeholder="Search by name or barcode…" oninput="applyFilter()">
+        <select id="filterCat" onchange="applyFilter()"><option value="">All Categories</option></select>
+        <span style="flex:1"></span>
+        <span class="kpi-sub">MMK currency: <b style="color:#e5e7eb">Ks</b></span>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <table>
+        <thead><tr>
+          <th>No.</th><th>Barcode</th><th>Name</th><th>Category</th><th>Qty</th><th>Cost</th><th>Selling</th><th>Status</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="pagination" style="text-align:center; margin-top:12px; color:#e5e7eb;"></div>
+      <p class="kpi-sub" style="margin-top:10px">Tip: Click a row to load it into the form.</p>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+
+  <!-- Low Stock Popup -->
+  <div id="lowStockModal">
+    <div class="content">
+      <span class="close" onclick="closeLowStock()">✖</span>
+      <h2>⚠ Low Stock & Out of Stock Products</h2>
+      <table>
+        <thead><tr>
+          <th>No</th><th>Barcode</th><th>Name</th><th>Qty</th><th>Status</th>
+        </tr></thead>
+        <tbody id="lowStockBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Outflow Modal -->
+<!-- Outflow Modal -->
+<div id="outflowModal" style="display:none; position:fixed; top:20%; left:50%; transform:translate(-50%, -20%);
+ background:#0b1220; padding:20px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.3); color:#e5e7eb; width:350px; text-align:center;">
+  <h3>💸 Add Outflow</h3>
+  <label>Name:</label>
+  <input list="outflowNames" id="outflowName" placeholder="Enter outflow name..." style="width:100%; margin-bottom:10px;">
+  <datalist id="outflowNames">
+    <option value="Electricity Bill">
+    <option value="Home/Street Bill">
+    <option value="Water">
+    <option value="Delivery Fee">
+    <option value="Oil">
+  </datalist>
+  
+  <label>Amount (Ks):</label>
+  <input type="number" id="outflowAmount" style="width:100%; margin-bottom:15px;">
+  
+  <div style="display:flex; justify-content:space-between; gap:10px;">
+    <button onclick="saveOutflow()">✅ Save</button>
+    <button onclick="closeOutflow()">❌ Cancel</button>
+    <button onclick="openOutflowRecords()">📜 Records</button>
+  </div>
+</div>
+
+
+</div>
+<!-- Restock Modal (hidden initially) -->
+<div id="restockModal" class="modal" style="display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.7); align-items:center; justify-content:center; z-index:2000;">
+    <div class="modal-content" style="background:#1e1e2f; padding:20px; border-radius:14px; width:500px; max-height:90vh; overflow:auto;">
+        <h2 style="background: #FFFFFF">📦 Restock Product</h2>
+        <form id="restockForm">
+          <input type="hidden" id="productId">
+<ul id="searchResults" style="list-style:none; margin:5px 0; padding:0; background:#111; border-radius:6px; max-height:150px; overflow:auto;"></ul>
+
+            <label for="restockSearch">Search by Name or Barcode:</label>
+            <input type="text" id="restockSearch" placeholder="Enter barcode or name">
+
+            <label for="restockQty">Quantity:</label>
+            <input type="number" id="restockQty">
+
+            <label for="restockCost">Cost Price (Ks):</label>
+            <input type="number" id="restockCost">
+
+            <label for="restockShop">Shop Name:</label>
+            <input list="shopOptions" id="shopName" placeholder="Type or choose">
+            <datalist id="shopOptions">
+                <option value="Ko Han Tin">
+                <option value="Pwint Pwint">
+                <option value="Ko Myo">
+            </datalist>
+
+       <label for="restockDate">Date:</label>
+       <input type="date" id="restockDate">
+
+            <div style="margin-top:15px; display:flex; gap:10px; justify-content:flex-end;">
+                <button type="submit">✅ Save</button>
+                <button type="button" onclick="closeRestock()">❌ Cancel</button>
+                <button type="button" onclick="openRestockRecords()">📜 Records</button>
+
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+<!-- Restock Records Modal -->
+<div id="restockRecordsModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); 
+ align-items:center; justify-content:center; z-index:10000;">
+ <div id="restockPagination" style="text-align:center; margin-top:12px;"></div>
+
+  <div class="modal-content" style="background:#0b1220; padding:20px; border-radius:14px; width:800px; color:#e5e7eb; max-height:90vh; overflow:auto;">
+    <h3>📜 Restock Records</h3>
+
+    <!-- Filters -->
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+      <input type="date" id="filterDate">
+      <input type="number" id="filterMonth" min="1" max="12" placeholder="Month">
+      <input type="number" id="filterYear" min="2000" max="2100" placeholder="Year">
+      <input list="shopOptions" id="filterShop" placeholder="Shop">
+      <button onclick="loadRestockRecords()">Apply</button>
+      <button onclick="closeRestockRecords()">❌ Close</button>
+    </div>
+
+    <table border="1" width="100%">
+      <thead>
+        <tr><th>Product</th><th>Qty</th><th>Cost</th><th>Shop</th><th>Date</th></tr>
+      </thead>
+      <tbody id="restockTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- Outflow Records Modal -->
+<div id="outflowRecordsModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); 
+ align-items:center; justify-content:center; z-index:10000;">
+  <div style="background:#0b1220; padding:20px; border-radius:14px; width:800px; max-height:90vh; overflow:auto; color:#e5e7eb;">
+    <h3>📜 Outflow Records</h3>
+    <p><b>Daily Total:</b> <span id="dailyTotal">0</span> Ks</p>
+    <p><b>Monthly Total:</b> <span id="monthlyTotal">0</span> Ks</p>
+
+    <!-- Filters -->
+    <div style="margin:10px 0; display:flex; gap:10px; align-items:center;">
+      <label>From: <input type="date" id="filterFrom"></label>
+      <label>To: <input type="date" id="filterTo"></label>
+      <input type="text" id="filterSearch" placeholder="Search name…" style="flex:1;">
+      <button onclick="applyOutflowFilter()">🔍 Filter</button>
+      <button onclick="closeOutflowRecords()">❌ Close</button>
+    </div>
+
+   <table border="1" width="100%" id="outflowTable">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Amount (Ks)</th>
+      <th>Date</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+  </div>
+</div>
+
+
+
+
+  <script>
+    const API = window.location.origin + "/api";  
+    const LOW = 10;
+    let products=[], view=[], selected=null;
+    let currentPage = 1;
+    const pageSize = 20;
+
+    const $$ = id=>document.getElementById(id);
+    const toast = (msg)=>{ const box=$$("toast"); const t=document.createElement("div"); t.className="toast"; t.textContent=msg; box.appendChild(t); setTimeout(()=>t.remove(),2400); };
+
+    function openOutflow() {
+  document.getElementById('outflowModal').style.display = 'block';
+}
+function closeOutflow() {
+  document.getElementById('outflowModal').style.display = 'none';
+}
+
+async function saveOutflow() {
+  const name = document.getElementById('outflowName').value;
+  const amount = parseFloat(document.getElementById('outflowAmount').value);
+
+  if (!name || !amount) {
+    alert("⚠ Please enter name and amount");
+    return;
+  }
+
+  // Save to backend
+  const res = await fetch('/api/outflow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, amount })
+  });
+
+  const data = await res.json();
+  if (data.success) {
+    alert("✅ Outflow saved");
+    closeOutflow();
+    loadOutflows();
+  } else {
+    alert("❌ Failed: " + data.error);
+  }
+}
+
+async function loadOutflows() {
+  const res = await fetch('/api/outflow');
+  const data = await res.json();
+  if (!data.success) return;
+
+  const tbody = document.querySelector("#outflowTable tbody");
+  tbody.innerHTML = "";
+
+  let daily = 0, monthly = 0;
+  const today = new Date().toISOString().split("T")[0];
+  const thisMonth = new Date().toISOString().slice(0,7);
+
+  data.data.forEach(of => {
+    const date = of.date.split("T")[0]; // only date
+    tbody.innerHTML += `<tr>
+  <td>${of.name}</td>
+  <td>${of.amount.toFixed(2)}</td>
+  <td>${date}</td>
+  <td>
+    <button onclick="editOutflow(${of.id}, '${of.name}', ${of.amount})">✏️ Edit</button>
+    <button onclick="deleteOutflow(${of.id})">🗑️ Delete</button>
+  </td>
+</tr>`;
+
+    if (date === today) daily += of.amount;
+    if (date.startsWith(thisMonth)) monthly += of.amount;
+  });
+
+  document.getElementById("dailyTotal").textContent = daily;
+  document.getElementById("monthlyTotal").textContent = monthly;
+}
+
+loadOutflows();
+
+    // popup functions
+    function showLowStock(){
+      const low = products.filter(p=>(p.quantity||0)<LOW);
+      const body = $$("lowStockBody");
+      body.innerHTML = "";
+      low.forEach((p,i)=>{
+        body.innerHTML += `<tr>
+          <td>${i+1}</td>
+          <td>${p.barcode||""}</td>
+          <td>${p.name||""}</td>
+          <td>${p.quantity??0}</td>
+          <td>${p.quantity==0?'<span style="color:#ef4444">Out of Stock</span>':'<span style="color:#f59e0b">Low Stock</span>'}</td>
+        </tr>`;
+      });
+      $$("lowStockModal").style.display="flex";
+    }
+    function closeLowStock(){ $$("lowStockModal").style.display="none"; }
+
+    // rest of your full JS unchanged...
+    function confirmBox(text,yes){
+      const ov=document.createElement("div"); ov.className="overlay";
+      ov.innerHTML=`<div class="dialog"><h3 style="margin:0 0 8px">Please Confirm</h3><p>${text}</p>
+        <div class="row"><button class="btn" id="c">Cancel</button><button class="btn danger" id="y">Delete</button></div></div>`;
+      document.body.appendChild(ov);
+      ov.querySelector('#c').onclick=()=>ov.remove();
+      ov.querySelector('#y').onclick=()=>{ov.remove(); yes&&yes();}
+    }
+
+    function onCatChange(sel){ $$("newCat").style.display = sel.value==="__new__" ? "block":"none"; }
+
+    function rebuildCats(){
+      const set = new Set(products.map(p=>p.category).filter(Boolean));
+      const sel = $$("category"); const fil = $$("filterCat");
+      sel.innerHTML = `<option value="">Select Category</option><option value="__new__">➕ Add New Category</option>`;
+      fil.innerHTML = `<option value="">All Categories</option>`;
+      set.forEach(c=>{
+        const o=document.createElement("option"); o.value=c; o.textContent=c; sel.insertBefore(o, sel.querySelector("option[value='__new__']"));
+        const f=document.createElement("option"); f.value=c; f.textContent=c; fil.appendChild(f);
+      });
+    }
+     
+    function toggleCustomName(sel){
+  const custom = document.getElementById('customOutflowName');
+  custom.style.display = sel.value==="Other" ? "block" : "none";
+}
+
+    // PRODUCTS TABLE (Inventory)
+// =============================
+
+let productPage = 1;
+const productPageSize = 20;
+
+
+function paint() {
+  const tb = document.querySelector("tbody");
+  tb.innerHTML = "";
+  const start = (productPage - 1) * productPageSize;
+  const pageItems = view.slice(start, start + productPageSize);
+
+  pageItems.forEach((p, i) => tb.insertAdjacentHTML("beforeend", rowHTML(p, start + i)));
+
+  const totalPages = Math.ceil(view.length / productPageSize) || 1;
+  document.getElementById("pagination").innerHTML = `
+    <button class="btn" onclick="prevProductPage()" ${productPage === 1 ? "disabled" : ""}>Prev</button>
+    Page ${productPage} of ${totalPages}
+    <button class="btn" onclick="nextProductPage()" ${productPage === totalPages ? "disabled" : ""}>Next</button>
+  `;
+}
+
+function rowHTML(p, i) {
+  return `<tr onclick="selectRow(${i})">
+      <td>${i + 1}</td>
+      <td>${p.barcode}</td>
+      <td>${p.name}</td>
+      <td>${p.category}</td>
+      <td>${p.quantity}</td>
+      <td>Ks ${Number(p.cost_price).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+      <td>Ks ${p.selling_price}</td>
+      <td>${p.quantity > 0 ? "<span style='color:lime'>In Stock</span>" : "<span style='color:red'>Out of Stock</span>"}</td>
+    </tr>`;
+}
+
+
+
+
+function prevProductPage() {
+  if (productPage > 1) {
+    productPage--;
+    paint();
+  }
+}
+
+function nextProductPage() {
+  const totalPages = Math.ceil(view.length / productPageSize);
+  if (productPage < totalPages) {
+    productPage++;
+    paint();
+  }
+}
+
+// ✅ NEW function to update KPI cards
+function updateKPIs() {
+  // Total products
+  document.getElementById("k_products").textContent = products.length;
+
+  // Inventory value (sum of qty × cost)
+  let totalValue = products.reduce((sum,p)=> sum + (p.quantity||0) * (p.cost_price||0), 0);
+  document.getElementById("k_value").textContent = "Ks " + totalValue.toLocaleString();
+
+  // Low stock (<10 qty)
+  let lowCount = products.filter(p => (p.quantity||0) < LOW).length;
+  document.getElementById("k_low").textContent = lowCount;
+
+  // Avg margin %
+  let totalMargin = 0, count = 0;
+  products.forEach(p=>{
+    if(p.selling_price>0){
+      let margin = ((p.selling_price - (p.cost_price||0)) / p.selling_price) * 100;
+      totalMargin += margin;
+      count++;
+    }
+  });
+  document.getElementById("k_profit").textContent = count ? (totalMargin/count).toFixed(1) + "%" : "0%";
+}
+
+
+  
+// ✅ Modified load function
+async function load(){
+  try { 
+    const r = await fetch(`${API}/products`); 
+    const j = await r.json();
+    if(j.success){ 
+      products = j.data; 
+      view = [...products]; 
+      rebuildCats(); 
+      paint(); 
+      updateKPIs();  // ✅ update KPI dashboard here
+    }
+    else {
+      toast("Failed to load products");
+    }
+  } catch(e){ 
+    toast("API /products not reachable"); 
+  }
+}
+
+    function selectRow(i){
+      selected = view[i];
+      $$("barcode").value = selected.barcode||"";
+      $$("name").value = selected.name||"";
+      $$("category").value = selected.category||"";
+      $$("newCat").style.display="none"; $$("newCat").value="";
+      $$("quantity").value = selected.quantity||0;
+      $$("cost").value = selected.cost_price||0;
+      $$("price").value = selected.selling_price||0;
+    }
+    
+       function applyFilter(){
+      const q = $$("search").value.toLowerCase();
+      const cat = $$("filterCat").value;
+      view = products.filter(p=>{
+        const m = (p.name||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q);
+        return m && (!cat || p.category===cat);
+      });
+      currentPage=1; selected=null; paint();
+    }
+
+    function clearForm(){ ["barcode","name","quantity","cost","price","newCat"].forEach(id=> $$(id).value=""); $$("category").value=""; $$("newCat").style.display="none"; selected=null; }
+
+    async function addProduct(){
+      let cat = $$("category").value; const nc = $$("newCat").value.trim();
+      if(cat==="__new__" && nc) cat = nc;
+      const payload = { barcode:($$("barcode").value||"").trim(), name:($$("name").value||"").trim(), category:cat, quantity:+($$("quantity").value||0), cost_price:+($$("cost").value||0), selling_price:+($$("price").value||0)};
+      try{ const r = await fetch(`${API}/products`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        const j = await r.json(); if(j.success){ toast("✅ Product added"); clearForm(); load(); } else toast("❌ Add failed"); }
+      catch{ toast("❌ Add failed (network)"); }
+    }
+
+    async function modifyProduct(){
+  if(!selected){ toast("Select a product first"); return; }
+
+  let cat = $$("category").value; 
+  const nc = $$("newCat").value.trim(); 
+  if(cat==="__new__" && nc) cat = nc;
+
+  const newQty  = +($$("quantity").value||0);   // 👈 Replace directly
+  const newCost = +($$("cost").value||0);
+
+  const payload = { 
+    barcode:($$("barcode").value||"").trim(), 
+    name:($$("name").value||"").trim(), 
+    category:cat, 
+    quantity: newQty,               // 👈 overwrite instead of adding
+    cost_price: newCost,            // 👈 direct cost (no averaging)
+    selling_price:+($$("price").value||0)
+  };
+
+  try{ 
+    const r = await fetch(`${API}/products/${selected.id}`,{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    }); 
+    const j = await r.json();
+    if(j.success){ 
+      toast("✅ Updated"); 
+      const idx = products.findIndex(p => p.id === selected.id);
+      if (idx !== -1) products[idx] = {...products[idx], ...payload};
+      view = [...products];
+      paint();
+      clearForm();
+    } else toast("❌ Update failed"); 
+  }
+  catch{ toast("❌ Update failed (network)"); }
+}
+
+
+
+    async function deleteProduct(){
+      if(!selected){ toast("Select a product first"); return; }
+      confirmBox(`Delete <b>${selected.name||selected.barcode}</b>?`, async ()=>{ try{
+        const r=await fetch(`${API}/products/${selected.id}`,{method:"DELETE"}); const j=await r.json();
+        if(j.success){ toast("🗑️ Deleted"); clearForm(); load(); } else toast("❌ Delete failed"); }
+        catch{ toast("❌ Delete failed (network)"); }
+      });
+    }
+
+    function printProducts(){
+      const w = window.open("");
+      let html = `<h2>Product List</h2><table border="1" cellspacing="0" cellpadding="6"><tr><th>No</th><th>Barcode</th><th>Name</th><th>Category</th><th>Qty</th><th>Cost</th><th>Selling</th><th>Status</th></tr>`;
+      view.forEach((p,i)=>{ const ok = (p.quantity||0)>0;
+        html += `<tr><td>${i+1}</td><td>${p.barcode||""}</td><td>${p.name||""}</td><td>${p.category||""}</td><td>${p.quantity??0}</td><td>${p.cost_price??0}</td><td>${p.selling_price??0}</td><td>${ ok ? "In Stock" : "Out of Stock" }</td></tr>`; });
+      html += `</table>`; w.document.write(html); w.print();
+    }
+
+    function openOutflowRecords(){
+  document.getElementById("outflowRecordsModal").style.display="flex";
+  loadOutflows(); // refresh table
+}
+
+function closeOutflowRecords(){
+  document.getElementById("outflowRecordsModal").style.display="none";
+}
+
+function applyOutflowFilter(){
+  const from = document.getElementById("filterFrom").value;
+  const to = document.getElementById("filterTo").value;
+  const search = document.getElementById("filterSearch").value.toLowerCase();
+
+  fetch('/api/outflow').then(r=>r.json()).then(data=>{
+    if(!data.success) return;
+    let rows = data.data;
+
+    if(from) rows = rows.filter(r => r.date >= from);
+    if(to) rows = rows.filter(r => r.date <= to + "T23:59:59");
+    if(search) rows = rows.filter(r => r.name.toLowerCase().includes(search));
+
+    renderOutflows(rows);
+  });
+}
+
+function renderOutflows(rows){
+  const tbody = document.querySelector("#outflowTable tbody");
+  tbody.innerHTML = "";
+
+  let daily = 0, monthly = 0;
+  const today = new Date().toISOString().split("T")[0];
+  const thisMonth = new Date().toISOString().slice(0,7);
+
+  rows.forEach(of => {
+    const date = of.date.split("T")[0];
+   tbody.innerHTML += `<tr>
+  <td>${of.name}</td>
+  <td>${of.amount}</td>
+  <td>${date}</td>
+</tr>`;
+
+    if(date === today) daily += of.amount;
+    if(date.startsWith(thisMonth)) monthly += of.amount;
+  });
+
+  document.getElementById("dailyTotal").textContent = daily;
+  document.getElementById("monthlyTotal").textContent = monthly;
+}
+
+async function editOutflow(id, name, amount) {
+  const newName = prompt("Edit name:", name);
+  if (newName === null) return;
+  const newAmount = prompt("Edit amount:", amount);
+  if (newAmount === null) return;
+
+  const res = await fetch(`/api/outflow/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: newName, amount: parseFloat(newAmount) })
+  });
+  const data = await res.json();
+  if (data.success) {
+    alert("✅ Outflow updated");
+    loadOutflows();
+  } else {
+    alert("❌ Failed: " + data.error);
+  }
+}
+
+async function deleteOutflow(id) {
+  if (!confirm("⚠ Delete this outflow?")) return;
+  const res = await fetch(`/api/outflow/${id}`, { method: "DELETE" });
+  const data = await res.json();
+  if (data.success) {
+    alert("🗑️ Outflow deleted");
+    loadOutflows();
+  } else {
+    alert("❌ Failed: " + data.error);
+  }
+}
+
+
+
+async function loadProductsForRestock(){
+  const res = await fetch('/api/products');
+  const data = await res.json();
+  const sel = document.getElementById("restockProduct");
+  sel.innerHTML = "";
+  data.data.forEach(p=>{
+    sel.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.quantity})</option>`;
+  });
+}
+
+
+
+// 🔹 Open/close
+
+function openRestockRecords() {
+  const m = document.getElementById("restockRecordsModal");
+  m.style.display = "flex";               // <- flex, not block
+  // clear filters
+  document.getElementById("filterDate").value  = "";
+  document.getElementById("filterMonth").value = "";
+  document.getElementById("filterYear").value  = "";
+  document.getElementById("filterShop").value  = "";
+  loadRestockRecords();
+}
+
+function closeRestockRecords(){
+  document.getElementById("restockRecordsModal").style.display="none";
+}
+
+// 🔹 Search products
+document.getElementById("restockSearch").addEventListener("input", async function() {
+
+  const q = this.value;
+  if (q.length < 2) return;
+  const res = await fetch(`/api/search_products?q=${q}`);
+  const data = await res.json();
+  const results = document.getElementById("searchResults");
+  results.innerHTML = "";
+  data.forEach(p => {
+    const li = document.createElement("li");
+    li.textContent = `${p.barcode} - ${p.name} (Stock: ${p.stock})`;
+    li.style.cursor = "pointer";
+    li.onclick = () => {
+      document.getElementById("restockSearch").value = p.name;
+      document.getElementById("productId").value = p.id;
+      results.innerHTML = "";
+    };
+    results.appendChild(li);
+  });
+});
+
+// 🔹 Save Restock
+async function saveRestock() {
+  const productId = document.getElementById("productId").value;
+  const qty = parseInt(document.getElementById("restockQty").value);
+  const cost = parseFloat(document.getElementById("restockCost").value);
+  const shop = document.getElementById("shopName").value;
+  const date = document.getElementById("restockDate").value;
+
+  if (!productId || !qty || !cost) { 
+    alert("Please fill all required fields!"); 
+    return; 
+  }
+
+  // Save restock record
+  const res = await fetch("/api/restock", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ product_id: productId, qty, cost_price: cost, shop_name: shop, date })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    alert("✅ Restock successful!");
+    new Audio("/static/sounds/success.mp3").play();
+
+    const p = products.find(prod => prod.id == productId);
+    if (p) {
+      const oldQty = p.quantity || 0;
+      const oldCost = p.cost_price || 0;
+
+      const totalQty = oldQty + qty;
+      const avgCost = ((oldQty * oldCost) + (qty * cost)) / totalQty;
+
+      // update backend product
+      await fetch(`/api/products/${productId}`, {
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          ...p,
+          quantity: totalQty,
+          cost_price: avgCost
+        })
+      });
+
+      // update local product
+      p.quantity = totalQty;
+      p.cost_price = avgCost;
+    }
+
+    paint();
+    closeRestock();
+  } else {
+    alert("❌ Error: " + data.message);
+  }
+}
+
+
+  document.getElementById("restockForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  saveRestock();
+});
+
+
+// 🔹 Load Restock Records
+
+
+//
+
+let restockRecords = [];
+let restockPage = 1;
+const restockPageSize = 15;
+
+async function loadRestockRecords() {
+  let r = await fetch("/api/restock_records");
+  restockRecords = await r.json();
+  restockPage = 1;
+  paintRestockTable();
+}
+
+function paintRestockTable() {
+  const tbody = document.getElementById("restockTableBody");
+  tbody.innerHTML = "";
+
+  if (!restockRecords.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#aaa;">No records found</td></tr>`;
+    document.getElementById("restockPagination").innerHTML = "";
+    return;
+  }
+
+  const start = (restockPage - 1) * restockPageSize;
+  const end = start + restockPageSize;
+  const pageRecords = restockRecords.slice(start, end);
+
+  pageRecords.forEach(r => {
+    const productName = r.product || r.product_name || r.name || "";
+    const shopName = r.shop || r.shop_name || "";
+    const dateOnly = (r.date || r.restocked_at || "").split("T")[0];
+
+    tbody.insertAdjacentHTML("beforeend", `
+      <tr>
+        <td>${productName}</td>
+        <td>${r.qty ?? ""}</td>
+        <td>Ks ${r.cost_price ?? ""}</td>
+        <td>${shopName}</td>
+        <td>${dateOnly}</td>
+      </tr>
+    `);
+  });
+
+  renderRestockPagination();
+}
+
+function renderRestockPagination() {
+  const totalPages = Math.ceil(restockRecords.length / restockPageSize);
+  const container = document.getElementById("restockPagination");
+
+  if (totalPages <= 1) {
+    container.innerHTML = "";
+    return;
+  }
+
+  let html = "";
+
+  if (restockPage > 1) {
+    html += `<button onclick="prevRestockPage()" class="pg-btn">⟨ Prev</button>`;
+  }
+
+  html += `<span class="pg-info"> Page ${restockPage} of ${totalPages} </span>`;
+
+  if (restockPage < totalPages) {
+    html += `<button onclick="nextRestockPage()" class="pg-btn">Next ⟩</button>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function nextRestockPage() {
+  const totalPages = Math.ceil(restockRecords.length / restockPageSize);
+  if (restockPage < totalPages) {
+    restockPage++;
+    paintRestockTable();
+  }
+}
+
+function prevRestockPage() {
+  if (restockPage > 1) {
+    restockPage--;
+    paintRestockTable();
+  }
+}
+
+// =============================
+// INIT
+// =============================
+load();
+
+// ===================== SHOP DROPDOWN =====================
+function updateShopDropdown(allRecords) {
+  const shopSelect = document.getElementById("filterShop");
+  shopSelect.innerHTML = "<option value=''>Shop</option>";
+  [...new Set(allRecords.map(r => r.shop || r.shop_name).filter(Boolean))].forEach(shop => {
+    const opt = document.createElement("option");
+    opt.value = shop;
+    opt.textContent = shop;
+    shopSelect.appendChild(opt);
+  });
+}
+
+
+
+function openRestock() {
+  document.getElementById("restockModal").style.display = "flex";
+}
+
+function closeRestock() {
+  document.getElementById("restockModal").style.display = "none";
+}
+
+
+
+
+
+    window.onload = load;
+  </script>
+
+  
+</body>
+</html>

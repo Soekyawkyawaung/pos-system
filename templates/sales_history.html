@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>POS — Sales History</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
+    h1 { font-size: 22px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    .container { max-width: 1100px; margin: auto; }
+    .top-buttons { text-align: right; margin-bottom: 20px; }
+    .btn { padding: 6px 12px; margin-left: 5px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; color: #fff; }
+    .btn-back { background: #3b82f6; }
+    .btn-filter { background: #22c55e; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; text-align: center; border: 1px solid #334155; }
+    th { background: #334155; color: #f1f5f9; }
+    .filter-box { margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
+    input { padding: 5px; border-radius: 5px; border: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📜 Sales History</h1>
+
+    <div class="top-buttons">
+      <button class="btn btn-back" onclick="location.href='/sales'">⬅ Back to Sales Report</button>
+    </div>
+
+    <!-- Date Filter -->
+    <div class="filter-box">
+      <label>From: <input type="date" id="fromDate"></label>
+      <label>To: <input type="date" id="toDate"></label>
+      <button class="btn btn-filter" onclick="loadHistory()">🔍 Filter</button>
+    </div>
+
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Barcode</th>
+          <th>Name</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Total</th>
+          <th>Payment Method</th>
+          <th>Date & Time</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function loadHistory() {
+      try {
+        const from = document.getElementById("fromDate").value;
+        const to = document.getElementById("toDate").value;
+
+        let url = "/api/sales";
+        if (from && to) {
+          url = `/api/sales?from=${from}&to=${to}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.success) return alert("Failed to load history");
+
+        const sales = data.data;
+        const body = document.querySelector("#historyTable tbody");
+        body.innerHTML = "";
+
+        let rowIndex = 1;
+
+        sales.forEach((s) => {
+          const dt = new Date(s.timestamp);
+          const items = JSON.parse(s.items || "[]");
+
+          items.forEach(it => {
+            body.innerHTML += `
+              <tr>
+                <td>${rowIndex++}</td>
+                <td>${it.barcode || "-"}</td>
+                <td>${it.name || "-"}</td>
+                <td>${it.qty}</td>
+                <td>${it.price}</td>
+                <td>${(it.price * it.qty).toFixed(2)}</td>
+                <td>${s.payment_method || "Cash"}</td>
+                <td>${dt.toLocaleString()}</td>
+              </tr>
+            `;
+          });
+        });
+
+      } catch (err) {
+        console.error("Load History Error:", err);
+      }
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>

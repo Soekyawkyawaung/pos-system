@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>POS — Profit Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">💰 Profit Report</h1>
+            <div class="flex justify-end space-x-2">
+                <a href="/products" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">📦 Products</a>
+                <a href="/cashier" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">🖥️ Cashier</a>
+                <a href="/sales" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">📊 Sales</a>
+            </div>
+        </div>
+
+       <!-- Summary -->
+<div class="grid grid-cols-5 gap-4">
+    <div class="bg-gray-800 rounded-2xl p-4 shadow-md text-center">
+        <h4 class="text-white text-lg">Today's Profit</h4>
+        <p class="text-green-400 font-bold">Ks {{ today_profit }}</p>
+    </div>
+    <div class="bg-gray-800 rounded-2xl p-4 shadow-md text-center">
+        <h4 class="text-white text-lg">This Month</h4>
+        <p class="text-green-400 font-bold">Ks {{ month_profit }}</p>
+    </div>
+    <div class="bg-gray-800 rounded-2xl p-4 shadow-md text-center">
+        <h4 class="text-white text-lg">Total Transactions</h4>
+        <p class="text-white font-bold">{{ total_transactions }}</p>
+    </div>
+    <div class="bg-gray-800 rounded-2xl p-4 shadow-md text-center">
+        <h4 class="text-white text-lg">Today's Profit (Outflow Included)</h4>
+        <p class="text-yellow-400 font-bold">Ks {{ today_profit_including_outflow }}</p>
+    </div>
+    <div class="bg-gray-800 rounded-2xl p-4 shadow-md text-center">
+        <h4 class="text-white text-lg">Monthly Profit (Outflow Included)</h4>
+        <p class="text-yellow-400 font-bold">Ks {{ month_profit_including_outflow }}</p>
+    </div>
+</div>
+
+
+<br>
+
+        <!-- Daily Profit -->
+        <div class="bg-gray-800 p-4 rounded-lg shadow mb-6">
+            <h2 class="text-lg font-semibold mb-4">Daily Profit (Today)</h2>
+            <div class="overflow-x-auto">
+                <table class="table-auto w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-700">
+                            <th class="px-4 py-2">#</th>
+                            <th class="px-4 py-2">Barcode</th>
+                            <th class="px-4 py-2">Name</th>
+                            <th class="px-4 py-2">Qty</th>
+                            <th class="px-4 py-2">Profit (Ks)</th>
+                            <th class="px-4 py-2">Date & Time</th>
+                        </tr>
+                    </thead>
+                   <tbody>
+            {% if daily_sales %}
+              {% for row in daily_sales %}
+          <tr>
+           <td>{{ loop.index }}</td>
+           <td>{{ row.barcode }}</td>
+            <td>{{ row.name }}</td>
+           <td>{{ row.qty }}</td>
+           <td>Ks {{ row.profit }}</td>
+           <td>{{ row.timestamp }}</td>
+           </tr>
+           {% endfor %}
+            {% else %}
+            <tr><td colspan="6">No sales today</td></tr>
+        {% endif %}
+           </tbody>
+                   </table>
+
+                
+            </div>
+        </div>
+
+
+
+        
+
+    </div>
+</body>
+</html>

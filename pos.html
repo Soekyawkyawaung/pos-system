@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS System - Sales Management</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1><i class="fas fa-shopping-cart"></i> Sales Management</h1>
+      <p>Quickly process sales transactions and inventory management</p>
+    </div>
+
+    <!-- Sales Stats -->
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="total-sales">Ks 0</div><div class="stat-label">Today's Sales</div></div>
+      <div class="stat-card"><div class="stat-value" id="total-profit">Ks 0</div><div class="stat-label">Today's Profit</div></div>
+      <div class="stat-card"><div class="stat-value" id="total-transactions">0</div><div class="stat-label">Transaction Count</div></div>
+      <div class="stat-card"><div class="stat-value" id="avg-profit-margin">0%</div><div class="stat-label">Average Profit Margin</div></div>
+    </div>
+
+    <!-- Sales Operation -->
+    <div class="card">
+      <div class="card-title"><i class="fas fa-cash-register"></i> Sales Operation</div>
+      <div class="form-container">
+        <div class="form-group"><label for="barcode">Barcode</label><input type="text" id="barcode" placeholder="Scan or enter product barcode"></div>
+        <div class="form-group"><label for="quantity">Quantity</label><input type="number" id="quantity" value="1"></div>
+        <div class="form-group"><label for="product-info">Product Information</label><input type="text" id="product-info" readonly></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="posSale()"><i class="fas fa-plus"></i> Add Sale</button>
+        <button class="btn btn-secondary" onclick="clearSaleForm()"><i class="fas fa-eraser"></i> Clear Form</button>
+        <button class="btn btn-success" onclick="goToProductManagement()"><i class="fas fa-box"></i> Product Management</button>
+      </div>
+    </div>
+
+    <!-- Sales Record -->
+    <div class="card">
+      <div class="card-title"><i class="fas fa-list"></i> Sales Record</div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Barcode</th><th>Product Name</th><th>Quantity</th><th>Price</th><th>Total Price</th><th>Date</th><th>Action</th></tr>
+          </thead>
+          <tbody id="pos_table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sales Summary -->
+    <div class="card">
+      <div class="card-title"><i class="fas fa-chart-bar"></i> Sales Statistics</div>
+      <div class="summary">
+        <p><strong>Total Sales:</strong> <span id="total_price">Ks 0</span></p>
+        <p><strong>Total Profit:</strong> <span id="total_profit">Ks 0</span></p>
+        <p><strong>Average Profit Margin:</strong> <span id="average_profit_margin">0%</span></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="notification-container"></div>
+
+  <script>
+    let products = [];
+    let sales = [];
+    const API_BASE = 'http://localhost:5000/api';
+
+    window.addEventListener('load', () => {
+      loadProducts().then(loadSales);
+    });
+
+    function showNotification(msg, type='success') {
+      const container = document.getElementById('notification-container');
+      const n = document.createElement('div');
+      n.className = `notification ${type}`;
+      n.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':type==='error'?'exclamation-circle':'info-circle'}"></i> ${msg}`;
+      container.appendChild(n);
+      setTimeout(() => n.remove(), 3000);
+    }
+
+    function searchProduct(barcode) {
+      const product = products.find(p => p.barcode === barcode);
+      const info = document.getElementById('product-info');
+      if (product) {
+        info.value = `${product.name} - Stock: ${product.quantity} - Price: Ks ${product.selling_price}`;
+        info.style.color = 'green';
+      } else {
+        info.value = 'Product not found';
+        info.style.color = 'red';
+      }
+    }
+
+    async function loadProducts() {
+      const res = await fetch(`${API_BASE}/products`);
+      const result = await res.json();
+      if (result.success) products = result.data;
+    }
+
+    async function loadSales() {
+      const res = await fetch(`${API_BASE}/sales`);
+      const result = await res.json();
+      if (result.success) {
+        sales = result.data;
+        refreshTable();
+        updateStats();
+      }
+    }
+
+    async function posSale() {
+      const barcode = document.getElementById("barcode").value.trim();
+      const qty = parseInt(document.getElementById("quantity").value);
+      const product = products.find(p => p.barcode === barcode);
+
+      if (!product) return showNotification("Product not found", "error");
+      if (qty <= 0) return showNotification("Invalid quantity", "error");
+      if (product.quantity < qty) return showNotification("Not enough stock", "error");
+
+      const res = await fetch(`${API_BASE}/sales`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          barcode: product.barcode,
+          name: product.name,
+          quantity: qty,
+          price: product.selling_price,
+          total_price: product.selling_price * qty,
+          cost_price: product.cost_price
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        await fetch(`${API_BASE}/products/update-quantity`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ barcode: product.barcode, quantity_change: -qty })
+        });
+        await loadProducts();
+        await loadSales();
+        clearSaleForm();
+        showNotification("Sale successful!");
+      }
+    }
+
+    function refreshTable() {
+      const table = document.getElementById("pos_table");
+      table.innerHTML = "";
+      let totalSales = 0, totalProfit = 0, totalProfitMargin = 0, totalQty = 0;
+
+      sales.forEach((s, i) => {
+        const profit = (s.price - s.cost_price) * s.quantity;
+        const margin = ((s.price - s.cost_price) / s.price) * 100;
+        totalSales += s.total_price;
+        totalProfit += profit;
+        totalProfitMargin += margin * s.quantity;
+        totalQty += s.quantity;
+
+        table.innerHTML += `
+          <tr>
+            <td>${s.barcode}</td>
+            <td>${s.name}</td>
+            <td>${s.quantity}</td>
+            <td>Ks ${s.price.toFixed(2)}</td>
+            <td>Ks ${s.total_price.toFixed(2)}</td>
+            <td>${new Date(s.date).toLocaleString()}</td>
+            <td><button onclick="deleteSale(${i})" class="btn btn-danger">Delete</button></td>
+          </tr>`;
+      });
+
+      document.getElementById("total_price").textContent = "Ks " + totalSales.toFixed(2);
+      document.getElementById("total_profit").textContent = "Ks " + totalProfit.toFixed(2);
+      document.getElementById("average_profit_margin").textContent = (totalQty>0 ? (totalProfitMargin/totalQty).toFixed(2):0) + "%";
+    }
+
+    function updateStats() {
+      const today = new Date().toDateString();
+      const todaySales = sales.filter(s => new Date(s.date).toDateString() === today);
+      const totalSales = todaySales.reduce((sum,s)=>sum+s.total_price,0);
+      const totalProfit = todaySales.reduce((sum,s)=>
+        sum+(s.price-s.cost_price)*s.quantity,0);
+      const transactions = todaySales.length;
+      const avgMargin = totalSales>0?(totalProfit/totalSales*100):0;
+
+      document.getElementById("total-sales").textContent = "Ks " + totalSales.toFixed(2);
+      document.getElementById("total-profit").textContent = "Ks " + totalProfit.toFixed(2);
+      document.getElementById("total-transactions").textContent = transactions;
+      document.getElementById("avg-profit-margin").textContent = avgMargin.toFixed(1)+"%";
+    }
+
+    async function deleteSale(i) {
+      const sale = sales[i];
+      if (!confirm(`Delete ${sale.name} x${sale.quantity}?`)) return;
+      await fetch(`${API_BASE}/sales/${sale.id}`, { method:'DELETE' });
+      await fetch(`${API_BASE}/products/update-quantity`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ barcode: sale.barcode, quantity_change: sale.quantity })
+      });
+      await loadProducts();
+      await loadSales();
+      showNotification("Sale deleted!");
+    }
+
+    function clearSaleForm() {
+      document.getElementById("barcode").value = "";
+      document.getElementById("quantity").value = "1";
+      document.getElementById("product-info").value = "";
+    }
+
+    function goToProductManagement() {
+      window.location.href = "/";
+    }
+  </script>
+</body>
+</html>

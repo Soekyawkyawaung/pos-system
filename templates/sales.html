@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>POS — Sales Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
+    h1 { font-size: 22px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    .container { max-width: 1100px; margin: auto; }
+    .top-buttons { text-align: right; margin-bottom: 20px; }
+    .btn {
+      padding: 6px 12px;
+      margin-left: 5px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #fff;
+    }
+    .btn-products { background: #3b82f6; }
+    .btn-cashier { background: #22c55e; }
+    .btn-profit { background: #f59e0b; }
+    .btn-reset-daily { background: #dc2626; }
+    .btn-reset-all { background: #7f1d1d; }
+
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .card h2 { font-size: 16px; margin-bottom: 15px; font-weight: bold; }
+
+    .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+    .stat-box {
+      flex: 1;
+      background: #1e293b;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-box strong { font-size: 18px; display: block; margin-bottom: 4px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #334155;
+    }
+    th { background: #334155; color: #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="flex-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+      <h1>📊 Sales Report</h1>
+      <div>
+        <button class="btn btn-products" onclick="location.href='/'">Products</button>
+        <button class="btn btn-cashier" onclick="location.href='/cashier'">Cashier</button>
+        <button class="btn btn-profit" onclick="location.href='/profit'">利润</button>
+        <button class="btn btn-reset-daily" onclick="resetSales('daily')">♻ Reset Daily</button>
+        <button class="btn btn-reset-all" onclick="resetSales('all')">🗑 Reset All</button>
+        <button class="btn btn-products" onclick="location.href='/sales/history'">📜 Sales History</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats">
+      <div class="stat-box">
+        <strong id="todayRevenue">Ks 0</strong>
+        Today’s Revenue
+      </div>
+      <div class="stat-box">
+        <strong id="monthRevenue">Ks 0</strong>
+        This Month
+      </div>
+      <div class="stat-box">
+        <strong id="transactions">0</strong>
+        Total Transactions
+      </div>
+    </div>
+
+    <!-- Daily Sales -->
+    <div class="card">
+      <h2>Daily Sales (Today)</h2>
+      <table id="todaySalesTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Barcode</th>
+            <th>Name</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+            <th>Payment Method</th>
+            <th>Date & Time</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Monthly Summary -->
+    <div class="card">
+      <h2>Monthly Summary</h2>
+      <table id="monthlySalesTable">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Transactions</th>
+            <th>Revenue (Ks)</th>
+            <th>Average per Sale (Ks)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function loadSales() {
+      try {
+        const res = await fetch("/api/sales");
+        const data = await res.json();
+        if (!data.success) return alert("Failed to load sales data");
+
+        const sales = data.data;
+        const today = new Date().toISOString().split("T")[0];
+        const month = today.slice(0, 7);
+
+        let todayRevenue = 0, monthRevenue = 0, transactionCount = 0;
+        const todayBody = document.querySelector("#todaySalesTable tbody");
+        const monthBody = document.querySelector("#monthlySalesTable tbody");
+        todayBody.innerHTML = ""; 
+        monthBody.innerHTML = "";
+
+        let monthTransactions = 0;
+
+        sales.forEach((s, idx) => {
+          const dt = new Date(s.timestamp);
+          const dateStr = dt.toISOString().split("T")[0];
+
+          // --- Today sales ---
+          if (dateStr === today) {
+            todayRevenue += s.total;
+            transactionCount++;
+            const items = JSON.parse(s.items);
+            items.forEach(it => {
+              todayBody.innerHTML += `
+                <tr>
+                  <td>${idx + 1}</td>
+                  <td>${it.barcode || "-"}</td>
+                  <td>${it.name}</td>
+                  <td>${it.qty}</td>
+                  <td>${it.price}</td>
+                  <td>${(it.price * it.qty).toFixed(2)}</td>
+                  <td>${s.payment_method || "N/A"}</td>
+                  <td>${dt.toLocaleString()}</td>
+                </tr>
+              `;
+            });
+          }
+
+          // --- Monthly sales ---
+          if (dateStr.startsWith(month)) {
+            monthRevenue += s.total;
+            monthTransactions++;
+          }
+        });
+
+        // Fill monthly summary
+        const avgSale = monthTransactions ? (monthRevenue / monthTransactions).toFixed(2) : 0;
+        monthBody.innerHTML += `
+          <tr>
+            <td>${month}</td>
+            <td>${monthTransactions}</td>
+            <td>Ks ${monthRevenue.toFixed(2)}</td>
+            <td>Ks ${avgSale}</td>
+          </tr>
+        `;
+
+        // Update stats
+        document.getElementById("todayRevenue").textContent = "Ks " + todayRevenue.toFixed(2);
+        document.getElementById("monthRevenue").textContent = "Ks " + monthRevenue.toFixed(2);
+        document.getElementById("transactions").textContent = transactionCount;
+
+      } catch (err) {
+        console.error("Load Sales Error:", err);
+      }
+    }
+
+    async function resetSales(scope) {
+      if (!confirm(`Are you sure you want to reset ${scope} sales?`)) return;
+      try {
+        const res = await fetch("/api/sales/reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scope })
+        });
+        const data = await res.json();
+        alert(data.message || "Error resetting");
+        loadSales();
+      } catch (err) {
+        console.error("Reset Error:", err);
+        alert("Network error while resetting");
+      }
+    }
+
+    loadSales();
+  </script>
+</body>
+</html>

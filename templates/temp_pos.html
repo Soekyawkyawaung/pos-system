@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cashier Page</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f8f9fa; color:#222; }
+    header { background: #007bff; color: white; padding: 10px; text-align: center; font-size: 20px; }
+    .container { display: flex; margin: 20px; }
+    .box { flex: 1; background: white; padding: 15px; margin: 5px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    h2 { margin-top: 0; }
+    .product-btn { display: block; margin: 5px 0; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .product-btn:hover { background: #218838; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #007bff; color: white; }
+    .remove-btn { background: red; color: white; border: none; padding: 5px 8px; cursor: pointer; border-radius: 4px; }
+    .checkout-btn { margin-top: 10px; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .checkout-btn:hover { background: #218838; }
+    .print-btn { margin-top: 10px; padding: 10px; background: #f59e0b; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .print-btn:hover { background: #d97706; }
+    .home-btn { margin-top: 10px; padding: 10px; background: gray; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    input[type="number"], input[type="text"], select { padding:5px; }
+
+    /* Suggestions dropdown */
+    #suggestions {
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      width: 90%;
+      max-height: 150px;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+    #suggestions div {
+      padding: 6px;
+      cursor: pointer;
+    }
+    #suggestions div:hover {
+      background: #007bff;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <header>💳 Cashier Page</header>
+
+  <!-- Add this inside <body> -->
+ <audio id="cashSound" src="/static/sounds/cash.mp3" preload="auto"></audio>
+
+
+  <div class="container">
+    <!-- Products -->
+    <div class="box">
+      <h2>Products</h2>
+      <div id="products"></div>
+    </div>
+
+    <!-- Cart -->
+    <div class="box" style="position:relative;">
+      <h2>Cart</h2>
+      <input type="text" id="barcodeInput" placeholder="Scan / Enter Barcode or Name">
+      <div id="suggestions"></div>
+
+      <table id="cartTable">
+        <thead>
+          <tr>
+            <th>Name</th><th>Qty</th><th>Price</th><th>Total</th><th>Remove</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p><b>Total:</b> <span id="total">0</span> Ks</p>
+      <p><b>Cash Received:</b> <input type="number" id="cash" oninput="calculateChange()"> Ks</p>
+      <p><b>Change:</b> <span id="change">0</span> Ks</p>
+      
+      <!-- NEW: Payment Method -->
+      <p>
+        <b>Payment Method:</b>
+        <select id="paymentMethod">
+          <option value="Cash">Cash</option>
+          <option value="KBZ Pay">KBZ Pay</option>
+          <option value="AYA Pay">AYA Pay</option>
+        </select>
+      </p>
+
+      <button class="checkout-btn" onclick="checkout()">✅ Checkout</button>
+      <button class="print-btn" onclick="printReceipt()">🖨 Print Receipt</button>
+      <button class="home-btn" onclick="goHome()">🏠 Go Home</button>
+    </div>
+  </div>
+
+  <script>
+    let products = [];
+    let cart = [];
+
+    // Fetch products
+    async function loadProducts() {
+      const res = await fetch('/api/products');
+      const data = await res.json();
+      if (!data.success) return alert("Failed to load products");
+      products = data.data;
+      const container = document.getElementById('products');
+      container.innerHTML = '';
+      products.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'product-btn';
+        btn.textContent = `${p.name} (${p.selling_price} Ks)`;
+        btn.onclick = () => addToCart(p);
+        container.appendChild(btn);
+      });
+    }
+
+    function addToCart(product) {
+      const existing = cart.find(i => i.id === product.id);
+      if (existing) {
+        existing.qty++;
+      } else {
+        cart.push({ ...product, qty: 1, price: product.selling_price });
+      }
+      renderCart();
+    }
+
+    function renderCart() {
+      const tbody = document.querySelector('#cartTable tbody');
+      tbody.innerHTML = '';
+      let total = 0;
+      cart.forEach((item, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.name}</td>
+          <td><input type="number" value="${item.qty}" min="1" onchange="updateQty(${i}, this.value)"></td>
+          <td>${item.price} Ks</td>
+          <td>${(item.qty * item.price).toFixed(2)} Ks</td>
+          <td><button class="remove-btn" onclick="removeItem(${i})">❌</button></td>
+        `;
+        tbody.appendChild(tr);
+        total += item.qty * item.price;
+      });
+      document.getElementById('total').textContent = total.toFixed(2);
+      calculateChange();
+    }
+
+    function updateQty(i, qty) {
+      cart[i].qty = parseInt(qty);
+      renderCart();
+    }
+
+    function removeItem(i) {
+      cart.splice(i, 1);
+      renderCart();
+    }
+
+    function calculateChange() {
+      const cash = parseFloat(document.getElementById('cash').value) || 0;
+      const total = parseFloat(document.getElementById('total').textContent);
+      document.getElementById('change').textContent = (cash - total).toFixed(2);
+    }
+
+    async function checkout() {
+  if (cart.length === 0) return alert("Cart is empty!");
+  const cash = parseFloat(document.getElementById('cash').value) || 0;
+  const total = parseFloat(document.getElementById('total').textContent);
+  const change = cash - total;
+  const paymentMethod = document.getElementById('paymentMethod').value;
+
+  const res = await fetch('/api/sales', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      items: cart, 
+      total, 
+      cash_received: cash, 
+      change_amount: change,
+      payment_method: paymentMethod
+    })
+  });
+
+  const data = await res.json();
+  if (data.success) {
+    alert("✅ Sale recorded via " + paymentMethod);
+
+    // 🔊 Play money income sound
+    document.getElementById("cashSound").play();
+
+    cart = [];
+    renderCart();
+    loadProducts();
+  } else {
+    alert("❌ Sale failed: " + data.error);
+  }
+}
+
+
+    function printReceipt() {
+      if (cart.length === 0) return alert("Cart is empty!");
+
+      const total = parseFloat(document.getElementById('total').textContent);
+      const cash = parseFloat(document.getElementById('cash').value) || 0;
+      const change = (cash - total).toFixed(2);
+      const method = document.getElementById('paymentMethod').value;
+
+      let receipt = `
+        <h2 style="text-align:center;">🧾 Soe Htet Pharmacy</h2>
+        <p style="text-align:center;">📞 09-758918234</p>
+        <p style="text-align:center;">🏠 60A 16x17st bet,Mandalay </p>
+        <hr>
+        <table style="width:100%; border-collapse:collapse;" border="1" cellpadding="5">
+          <tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+      `;
+      cart.forEach(i => {
+        receipt += `<tr><td>${i.name}</td><td>${i.qty}</td><td>${i.price}</td><td>${(i.qty * i.price).toFixed(2)}</td></tr>`;
+      });
+      receipt += `
+        </table>
+        <p><b>Total:</b> ${total} Ks</p>
+        <p><b>Cash Received:</b> ${cash} Ks</p>
+        <p><b>Change:</b> ${change} Ks</p>
+        <p><b>Payment Method:</b> ${method}</p>
+        <hr>
+        <p style="text-align:center;">✅ Thank you for shopping with us!</p>
+      `;
+
+      const win = window.open("", "PrintReceipt", "width=400,height=600");
+      win.document.write(receipt);
+      win.document.close();
+      win.print();
+    }
+
+    // --- Search by barcode or name ---
+    const input = document.getElementById("barcodeInput");
+    const suggestions = document.getElementById("suggestions");
+
+    input.addEventListener("input", () => {
+      const q = input.value.toLowerCase();
+      suggestions.innerHTML = "";
+      if (!q) return;
+
+      const matches = products.filter(
+        p => (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+             (p.name && p.name.toLowerCase().includes(q))
+      ).slice(0, 5);
+
+      matches.forEach(p => {
+        const div = document.createElement("div");
+        div.textContent = `${p.name} (${p.selling_price} Ks)`;
+        div.onclick = () => {
+          addToCart(p);
+          suggestions.innerHTML = "";
+          input.value = "";
+        };
+        suggestions.appendChild(div);
+      });
+    });
+
+    function goHome() {
+      window.location.href = "/";
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>
